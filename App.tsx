@@ -29,24 +29,46 @@ const App: React.FC = () => {
 
   // Check for existing session
   useEffect(() => {
+    let mounted = true;
+
     const checkSession = async () => {
-      const user = await db.getCurrentUser();
-      setCurrentUser(user);
-      setIsLoadingUser(false);
+      try {
+        const user = await db.getCurrentUser();
+        if (mounted) {
+          setCurrentUser(user);
+          setIsLoadingUser(false);
+        }
+      } catch (e) {
+        console.error("Session check failed", e);
+        if (mounted) setIsLoadingUser(false);
+      }
     };
+
     checkSession();
 
+    // Failsafe: If DB takes too long, stop loading so user can try manual login
+    const timer = setTimeout(() => {
+      if (mounted && isLoadingUser) {
+        setIsLoadingUser(false);
+      }
+    }, 3000);
+
     const { data: { subscription } } = db.onAuthStateChange((user) => {
-      setCurrentUser(user);
-      if (!user) {
-        setFormData(INITIAL_FORM_STATE);
-        setGeneratedResult(null);
-        setAppState(AppState.IDLE);
-        setView('create');
+      if (mounted) {
+        setCurrentUser(user);
+        if (!user) {
+          setFormData(INITIAL_FORM_STATE);
+          setGeneratedResult(null);
+          setAppState(AppState.IDLE);
+          setView('create');
+        }
+        setIsLoadingUser(false); // Ensure loading stops on auth state change
       }
     });
 
     return () => {
+      mounted = false;
+      clearTimeout(timer);
       subscription.unsubscribe();
     };
   }, []);
@@ -138,8 +160,14 @@ const App: React.FC = () => {
 
   if (isLoadingUser) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-luxe-gold"></div>
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] z-50">
+         <div className="w-16 h-16 bg-gradient-to-tr from-luxe-gold to-yellow-600 rounded-sm flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(212,175,55,0.2)]">
+            <Camera className="text-black w-8 h-8" />
+         </div>
+         <div className="w-48 h-0.5 bg-white/10 rounded-full overflow-hidden">
+            <div className="w-1/2 h-full bg-luxe-gold animate-[progress_1.5s_ease-in-out_infinite]"></div>
+         </div>
+         <div className="mt-4 font-serif text-[10px] uppercase tracking-widest text-gray-500">Starting Engine</div>
       </div>
     );
   }

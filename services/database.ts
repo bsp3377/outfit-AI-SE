@@ -121,7 +121,7 @@ class DatabaseService {
       id: row.id,
       userId: row.user_id,
       imageUrl: row.image_url,
-      garmentType: row.garment_type, // Fixed naming convention mismatch from DB
+      garmentType: row.garment_type, 
       mode: row.mode,
       timestamp: new Date(row.created_at).getTime(),
     };
