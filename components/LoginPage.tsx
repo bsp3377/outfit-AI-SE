@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Camera, ArrowRight, Sparkles, Lock, UserPlus } from 'lucide-react';
-import { TextInput } from './InputGroup';
-import { db } from '../services/database';
-import { User } from '../types';
+import { TextInput } from './InputGroup.tsx';
+import { db } from '../services/database.ts';
+import { User } from '../types.ts';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;

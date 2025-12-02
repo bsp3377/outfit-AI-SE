@@ -1,6 +1,5 @@
-
 import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
-import { User, SavedProject, GenerationMode } from '../types';
+import { User, SavedProject, GenerationMode } from '../types.ts';
 
 // Supabase Configuration
 const PROJECT_URL = 'https://tferpsxzuzmwarcihrwv.supabase.co';
@@ -122,7 +121,7 @@ class DatabaseService {
       id: row.id,
       userId: row.user_id,
       imageUrl: row.image_url,
-      garmentType: row.garment_type,
+      garmentType: row.garment_type, // Fixed naming convention mismatch from DB
       mode: row.mode,
       timestamp: new Date(row.created_at).getTime(),
     };

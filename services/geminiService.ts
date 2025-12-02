@@ -1,6 +1,5 @@
-
 import { GoogleGenAI } from "@google/genai";
-import { GarmentFormData } from "../types";
+import { GarmentFormData } from "../types.ts";
 
 const SYSTEM_INSTRUCTION = `Objective: Act as a world-class e-commerce photographer, creative director, and digital stylist. Your task is to take the provided input image of a garment and generate a new, high-resolution, photorealistic image.
 

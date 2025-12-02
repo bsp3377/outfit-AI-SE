@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
-import { ImageUploader } from './components/ImageUploader';
-import { TextInput, TextArea } from './components/InputGroup';
-import { LoginPage } from './components/LoginPage';
-import { Library } from './components/Library';
-import { GarmentFormData, AppState, GenerationMode, User } from './types';
-import { generateModelImage } from './services/geminiService';
-import { db } from './services/database';
+import { ImageUploader } from './components/ImageUploader.tsx';
+import { TextInput, TextArea } from './components/InputGroup.tsx';
+import { LoginPage } from './components/LoginPage.tsx';
+import { Library } from './components/Library.tsx';
+import { GarmentFormData, AppState, GenerationMode, User } from './types.ts';
+import { generateModelImage } from './services/geminiService.ts';
+import { db } from './services/database.ts';
 import { Camera, Sparkles, AlertCircle, Download, RefreshCw, Users, Shirt, LogOut, LayoutGrid, PlusSquare } from 'lucide-react';
 
 const INITIAL_FORM_STATE: GarmentFormData = {

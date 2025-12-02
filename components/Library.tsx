@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
-import { SavedProject } from '../types';
-import { db } from '../services/database';
+import { SavedProject } from '../types.ts';
+import { db } from '../services/database.ts';
 import { Trash2, Download, Calendar, Shirt, Sparkles, Users } from 'lucide-react';
 
 interface LibraryProps {
@@ -103,7 +102,7 @@ export const Library: React.FC<LibraryProps> = ({ userId }) => {
           </div>
           
           <div className="p-4">
-            <h4 className="font-serif text-white truncate mb-1">{project.garmentType}</h4>
+            <h4 className="font-serif text-white truncate mb-1">{project.garment_type || project.garmentType}</h4>
             <div className="flex items-center text-xs text-gray-500 space-x-2">
               <Calendar className="w-3 h-3" />
               <span>{new Date(project.timestamp).toLocaleDateString()}</span>
