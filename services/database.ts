@@ -121,7 +121,7 @@ class DatabaseService {
       id: row.id,
       userId: row.user_id,
       imageUrl: row.image_url,
-      garmentType: row.garment_type, 
+      garmentType: row.garment_type, // Map snake_case from DB to camelCase for App
       mode: row.mode,
       timestamp: new Date(row.created_at).getTime(),
     };

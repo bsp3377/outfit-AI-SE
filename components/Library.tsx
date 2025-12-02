@@ -102,7 +102,7 @@ export const Library: React.FC<LibraryProps> = ({ userId }) => {
           </div>
           
           <div className="p-4">
-            <h4 className="font-serif text-white truncate mb-1">{project.garment_type || project.garmentType}</h4>
+            <h4 className="font-serif text-white truncate mb-1">{project.garmentType}</h4>
             <div className="flex items-center text-xs text-gray-500 space-x-2">
               <Calendar className="w-3 h-3" />
               <span>{new Date(project.timestamp).toLocaleDateString()}</span>
