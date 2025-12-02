@@ -10,20 +10,28 @@ interface LibraryProps {
 
 export const Library: React.FC<LibraryProps> = ({ userId }) => {
   const [projects, setProjects] = useState<SavedProject[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadProjects();
   }, [userId]);
 
-  const loadProjects = () => {
-    const data = db.getUserProjects(userId);
-    setProjects(data);
+  const loadProjects = async () => {
+    setLoading(true);
+    try {
+      const data = await db.getUserProjects(userId);
+      setProjects(data);
+    } catch (error) {
+      console.error("Failed to load projects", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault(); // Prevent downloading if wrapped in link
     if (window.confirm('Are you sure you want to delete this image?')) {
-      db.deleteProject(id);
+      await db.deleteProject(id);
       loadProjects();
     }
   };
@@ -36,6 +44,14 @@ export const Library: React.FC<LibraryProps> = ({ userId }) => {
       default: return <Sparkles className="w-3 h-3" />;
     }
   };
+
+  if (loading) {
+     return (
+        <div className="flex justify-center py-20">
+           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-luxe-gold"></div>
+        </div>
+     );
+  }
 
   if (projects.length === 0) {
     return (

@@ -19,7 +19,6 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  passwordHash: string; // In a real app, this would be salted and hashed
   createdAt: number;
 }
 

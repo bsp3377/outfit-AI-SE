@@ -16,10 +16,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const toggleMode = () => {
     setIsLoginMode(!isLoginMode);
     setError('');
+    setSuccessMessage('');
     setUsername('');
     setEmail('');
     setPassword('');
@@ -28,25 +30,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setIsLoading(true);
 
     try {
-      // Simulate network delay for effect
-      await new Promise(resolve => setTimeout(resolve, 800));
-
       let user: User;
       
       if (isLoginMode) {
-        if (!username || !password) throw new Error("Username and password required.");
-        user = db.login(username, password);
+        if (!email || !password) throw new Error("Email and password required.");
+        user = await db.login(email, password);
+        onLogin(user);
       } else {
         if (!username || !password || !email) throw new Error("All fields are required.");
-        user = db.register(username, email, password);
+        // Check password strength roughly
+        if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+        
+        user = await db.register(username, email, password);
+        // Supabase often requires email confirmation.
+        setSuccessMessage("Account created! You may need to verify your email before logging in.");
+        setIsLoginMode(true); 
       }
-      
-      onLogin(user);
 
     } catch (err) {
+      console.error(err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setIsLoading(false);
@@ -54,24 +60,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
-    setIsLoading(true);
-    // Simulate Google OAuth delay
-    setTimeout(() => {
-      // Create a mock Google user
-      try {
-        let user;
-        try {
-           user = db.login("google_user", "google_pass");
-        } catch {
-           user = db.register("google_user", "google@example.com", "google_pass");
-        }
-        onLogin(user);
-      } catch (err) {
-        setError("Google Login Failed");
-        setIsLoading(false);
-      }
-    }, 1500);
+    // Note: Implementing real Google Auth requires Supabase Auth configured with OAuth provider
+    // and a redirect URL. This simulation warns the user.
+    setError('Google Login requires OAuth configuration in Supabase Dashboard.');
   };
 
   return (
@@ -109,33 +100,32 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
 
             <div className="space-y-0 transition-all duration-300">
-              <TextInput 
-                label={isLoginMode ? "Username or Email" : "Username"}
-                type="text"
-                placeholder={isLoginMode ? "Enter username" : "Choose a username"}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                key={`username-${isLoginMode}`} 
-                autoFocus={isLoginMode}
-              />
-
-              {/* Email field only for Registration */}
+              
               {!isLoginMode && (
                 <div className="animate-fade-in-down">
                   <TextInput 
-                    label="Email Address"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    label="Username"
+                    type="text"
+                    placeholder="Choose a username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                   />
                 </div>
               )}
 
               <TextInput 
+                label="Email Address"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+              />
+
+              <TextInput 
                 label="Password"
                 type="password"
-                placeholder={isLoginMode ? "Enter your password" : "Create a password"}
+                placeholder={isLoginMode ? "Enter your password" : "Create a password (min 6 chars)"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -145,6 +135,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <div className="mb-4 text-xs text-red-400 flex items-center space-x-2 bg-red-500/10 p-2 border border-red-500/20 rounded-sm animate-pulse">
                 <span className="w-1 h-1 bg-red-500 rounded-full"></span>
                 <span>{error}</span>
+              </div>
+            )}
+            
+            {successMessage && (
+              <div className="mb-4 text-xs text-green-400 flex items-center space-x-2 bg-green-500/10 p-2 border border-green-500/20 rounded-sm">
+                <span className="w-1 h-1 bg-green-500 rounded-full"></span>
+                <span>{successMessage}</span>
               </div>
             )}
 

@@ -1,124 +1,131 @@
 
+import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
 import { User, SavedProject, GenerationMode } from '../types';
 
-const USERS_KEY = 'outfit_ai_users';
-const PROJECTS_KEY = 'outfit_ai_projects';
-const CURRENT_USER_KEY = 'outfit_ai_current_user';
-
-// Helper to generate IDs
-const generateId = () => Math.random().toString(36).substring(2, 9);
+// Supabase Configuration
+const PROJECT_URL = 'https://tferpsxzuzmwarcihrwv.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmZXJwc3h6dXptd2FyY2locnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1OTM1NjMsImV4cCI6MjA4MDE2OTU2M30.nbJp0CTkMcbwC7nWEST5XZBrT6XB-3vkb-qgCRMViUY';
 
 class DatabaseService {
+  private supabase: SupabaseClient;
+
+  constructor() {
+    this.supabase = createClient(PROJECT_URL, ANON_KEY);
+  }
+
   // --- Auth Methods ---
 
-  register(username: string, email: string, password: string): User {
-    const users = this.getUsers();
-    
-    // Check if user exists
-    if (users.find(u => u.username === username || u.email === email)) {
-      throw new Error('Username or Email already exists.');
-    }
-
-    const newUser: User = {
-      id: generateId(),
-      username,
+  async register(username: string, email: string, password: string): Promise<User> {
+    const { data, error } = await this.supabase.auth.signUp({
       email,
-      passwordHash: btoa(password), // Simple base64 for demo purposes. DO NOT use in production.
-      createdAt: Date.now()
-    };
+      password,
+      options: {
+        data: {
+          username: username,
+        },
+      },
+    });
 
-    users.push(newUser);
-    this.saveUsers(users);
-    
-    // Auto login after register
-    this.setCurrentUser(newUser);
-    return newUser;
+    if (error) throw new Error(error.message);
+    if (!data.user) throw new Error('Registration failed.');
+
+    return this.mapSupabaseUser(data.user);
   }
 
-  login(identifier: string, password: string): User {
-    const users = this.getUsers();
-    const hash = btoa(password);
-    
-    const user = users.find(u => 
-      (u.username === identifier || u.email === identifier) && u.passwordHash === hash
-    );
+  async login(email: string, password: string): Promise<User> {
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    if (!user) {
-      throw new Error('Invalid credentials.');
-    }
+    if (error) throw new Error(error.message);
+    if (!data.user) throw new Error('Login failed.');
 
-    this.setCurrentUser(user);
-    return user;
+    return this.mapSupabaseUser(data.user);
   }
 
-  logout() {
-    localStorage.removeItem(CURRENT_USER_KEY);
+  async logout(): Promise<void> {
+    await this.supabase.auth.signOut();
   }
 
-  getCurrentUser(): User | null {
-    const stored = localStorage.getItem(CURRENT_USER_KEY);
-    return stored ? JSON.parse(stored) : null;
+  async getCurrentUser(): Promise<User | null> {
+    const { data } = await this.supabase.auth.getSession();
+    if (!data.session?.user) return null;
+    return this.mapSupabaseUser(data.session.user);
+  }
+  
+  // Method to listen for auth state changes
+  onAuthStateChange(callback: (user: User | null) => void) {
+    return this.supabase.auth.onAuthStateChange((event, session) => {
+      callback(session?.user ? this.mapSupabaseUser(session.user) : null);
+    });
   }
 
   // --- Project/Data Methods ---
 
-  saveProject(userId: string, imageUrl: string, garmentType: string, mode: GenerationMode): SavedProject {
-    const projects = this.getAllProjects();
-    const newProject: SavedProject = {
-      id: generateId(),
-      userId,
-      imageUrl,
-      garmentType,
-      mode,
-      timestamp: Date.now()
-    };
+  async saveProject(userId: string, imageUrl: string, garmentType: string, mode: GenerationMode): Promise<SavedProject> {
+    const { data, error } = await this.supabase
+      .from('projects')
+      .insert([
+        {
+          user_id: userId,
+          image_url: imageUrl,
+          garment_type: garmentType,
+          mode: mode,
+        },
+      ])
+      .select()
+      .single();
 
-    projects.push(newProject);
-    this.saveAllProjects(projects);
-    return newProject;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
+
+    return this.mapProject(data);
   }
 
-  getUserProjects(userId: string): SavedProject[] {
-    const projects = this.getAllProjects();
-    // Sort by newest first
-    return projects
-      .filter(p => p.userId === userId)
-      .sort((a, b) => b.timestamp - a.timestamp);
+  async getUserProjects(userId: string): Promise<SavedProject[]> {
+    const { data, error } = await this.supabase
+      .from('projects')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    return (data || []).map(this.mapProject);
   }
 
-  deleteProject(projectId: string) {
-    let projects = this.getAllProjects();
-    projects = projects.filter(p => p.id !== projectId);
-    this.saveAllProjects(projects);
+  async deleteProject(projectId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId);
+
+    if (error) throw new Error(error.message);
   }
 
   // --- Internal Helpers ---
 
-  private getUsers(): User[] {
-    const stored = localStorage.getItem(USERS_KEY);
-    return stored ? JSON.parse(stored) : [];
+  private mapSupabaseUser(user: SupabaseUser): User {
+    return {
+      id: user.id,
+      email: user.email || '',
+      username: user.user_metadata?.username || user.email?.split('@')[0] || 'User',
+      createdAt: new Date(user.created_at).getTime(),
+    };
   }
 
-  private saveUsers(users: User[]) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-
-  private setCurrentUser(user: User) {
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  }
-
-  private getAllProjects(): SavedProject[] {
-    const stored = localStorage.getItem(PROJECTS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  }
-
-  private saveAllProjects(projects: SavedProject[]) {
-    // Check for storage limits - simple check
-    try {
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    } catch (e) {
-      throw new Error("Storage full. Delete some old images to save new ones.");
-    }
+  private mapProject(row: any): SavedProject {
+    return {
+      id: row.id,
+      userId: row.user_id,
+      imageUrl: row.image_url,
+      garmentType: row.garment_type,
+      mode: row.mode,
+      timestamp: new Date(row.created_at).getTime(),
+    };
   }
 }
 

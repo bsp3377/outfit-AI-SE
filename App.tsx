@@ -26,27 +26,40 @@ const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [generatedResult, setGeneratedResult] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
 
   // Check for existing session
   useEffect(() => {
-    const user = db.getCurrentUser();
-    if (user) {
+    const checkSession = async () => {
+      const user = await db.getCurrentUser();
       setCurrentUser(user);
-    }
+      setIsLoadingUser(false);
+    };
+    checkSession();
+
+    const { data: { subscription } } = db.onAuthStateChange((user) => {
+      setCurrentUser(user);
+      if (!user) {
+        setFormData(INITIAL_FORM_STATE);
+        setGeneratedResult(null);
+        setAppState(AppState.IDLE);
+        setView('create');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = (user: User) => {
-    setCurrentUser(user);
+    // Auth state change listener will update currentUser
     setView('create');
   };
 
-  const handleLogout = () => {
-    db.logout();
-    setCurrentUser(null);
-    setFormData(INITIAL_FORM_STATE);
-    setGeneratedResult(null);
-    setAppState(AppState.IDLE);
-    setView('create');
+  const handleLogout = async () => {
+    await db.logout();
+    // Auth state change listener will handle state cleanup
   };
 
   const handleInputChange = (field: keyof GarmentFormData, value: string) => {
@@ -100,7 +113,7 @@ const App: React.FC = () => {
 
       // Auto-save to database
       try {
-        db.saveProject(currentUser.id, resultUrl, formData.garmentType, formData.mode);
+        await db.saveProject(currentUser.id, resultUrl, formData.garmentType, formData.mode);
       } catch (saveError) {
         console.warn("Failed to save to history:", saveError);
       }
@@ -123,6 +136,14 @@ const App: React.FC = () => {
         return "";
     }
   };
+
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-luxe-gold"></div>
+      </div>
+    );
+  }
 
   // Render Login Page if not authenticated
   if (!currentUser) {
